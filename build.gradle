@@ -1,0 +1,49 @@
+import nz.govt.natlib.m11n.tools.automation.logging.Timekeeper
+import nz.govt.natlib.m11n.tools.gradle.BuildException
+import nz.govt.natlib.m11n.tools.gradle.ProjectHelper
+
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'nz.govt.natlib.m11n.tools:automation-plugin:1.0.0-SNAPSHOT'
+        classpath 'nz.govt.natlib.m11n.tools:gradle-plugin:1.0.0-SNAPSHOT'
+        classpath 'nz.govt.natlib.tools:rosetta-dashboard-gradle-plugin:1.0.0-SNAPSHOT'
+    }
+}
+
+group 'nz.govt.natlib.tools'
+description = 'National Library Rosetta Dashboard Processor'
+
+project.ext {
+    vendor = "National Library of New Zealand"
+    versionNumber = "1.0.0-SNAPSHOT"
+
+    // Command-line variables used for specific tasks
+    doProcessBoard = ProjectHelper.hasAnyTasks(project, [ "processBoard" ])
+
+}
+
+apply plugin: 'base'
+
+setVersion(project.versionNumber)
+
+configurations {
+}
+
+Timekeeper timekeeper = new Timekeeper()
+timekeeper.start()
+
+task processBoard(dependsOn: [ ]) {
+    File sourceFolder
+    File destinationFolder
+    if (project.doProcessBoard) {
+
+    }
+    doLast {
+        if (project.doProcessBoard) {
+        }
+    }
+}
