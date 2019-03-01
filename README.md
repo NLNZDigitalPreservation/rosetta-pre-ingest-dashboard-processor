@@ -18,7 +18,29 @@ At this time there is no important information to impart.
 
 ## Usage
 
+See the *Parameters* section for explanations for the different parameters.
+
+### Process the board
+
+Processes the board as shown by the example:
+```
+gradle processBoard \
+    -PboardUri=<board-uri> \
+    -PboardUsername=<board-username> \
+    -PboardPassword=<board-password> \
+    --info --stacktrace
+```
+
 ### Parameters
+
+#### boardUri
+The URL of the Wekan board. The default is `localhost`.
+
+#### boardUsername
+The username for the Wekan board. This parameter must be specified.
+
+#### boardPassword
+The password for the Wekan board. This parameter must be specified.
 
 ## Contributors
 

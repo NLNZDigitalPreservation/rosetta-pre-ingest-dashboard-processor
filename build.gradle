@@ -1,6 +1,10 @@
 import nz.govt.natlib.m11n.tools.automation.logging.Timekeeper
 import nz.govt.natlib.m11n.tools.gradle.BuildException
 import nz.govt.natlib.m11n.tools.gradle.ProjectHelper
+import groovyx.net.http.ContentTypes
+import groovyx.net.http.HttpBuilder
+
+import java.nio.charset.Charset
 
 buildscript {
     repositories {
@@ -24,6 +28,10 @@ project.ext {
     // Command-line variables used for specific tasks
     doProcessBoard = ProjectHelper.hasAnyTasks(project, [ "processBoard" ])
 
+    // boardUri, username and password
+    boardUriValue = project.hasProperty('boardUri') ? project.boardUri : 'localhost'
+    boardUsernameValue = project.hasProperty('boardUsername') ? project.boardUri : null
+    boardPasswordValue = project.hasProperty('boardPassword') ? project.boardUri : null
 }
 
 apply plugin: 'base'
@@ -33,17 +41,85 @@ setVersion(project.versionNumber)
 configurations {
 }
 
+Closure<Map<String, Object>> getLoginToken = { String uri, String username, String password ->
+    Map<String, Object> postResult = HttpBuilder.configure {
+        request.uri = uri
+        request.contentType = ContentTypes.JSON[0] // "application/json"
+        request.charset = Charset.forName("UTF-8")
+    }.post {
+        request.uri.path = "/users/login"
+        request.body = [username: username, password: password]
+    }
+    println("result=${postResult}, class=${postResult.getClass().getName()}")
+
+    return postResult
+}
+
+Closure<List<Object>> listBoards = { String uri, Map<String, Object> loginToken ->
+    List<Object> getResult = HttpBuilder.configure {
+        request.uri = uri
+        request.contentType = ContentTypes.JSON[0] // "application/json"
+        request.charset = Charset.forName("UTF-8")
+        String authorizationValue = "Bearer ${loginToken.get('token')}"
+        logger.info("authorizationValue='${authorizationValue}'")
+        request.headers['Authorization'] = authorizationValue
+    }.get {
+        String id = loginToken.get("id")
+        request.uri.path = "/api/users/${id}/boards"
+    }
+    println("result=${getResult}, class=${getResult.getClass().getName()}")
+
+    return getResult
+}
+
+Closure<List<Object>> listBoardLists = { String uri, String boardId, Map<String, Object> loginToken ->
+    List<Object> getResult = HttpBuilder.configure {
+        request.uri = uri
+        request.contentType = ContentTypes.JSON[0] // "application/json"
+        request.charset = Charset.forName("UTF-8")
+        String authorizationValue = "Bearer ${loginToken.get('token')}"
+        logger.info("authorizationValue='${authorizationValue}'")
+        request.headers['Authorization'] = authorizationValue
+    }.get {
+        request.uri.path = "/api/boards/${boardId}/lists"
+    }
+    println("result=${getResult}, class=${getResult.getClass().getName()}")
+
+    return getResult
+}
+
 Timekeeper timekeeper = new Timekeeper()
 timekeeper.start()
 
 task processBoard(dependsOn: [ ]) {
-    File sourceFolder
-    File destinationFolder
     if (project.doProcessBoard) {
-
+        if (project.boardUsernameValue == null) {
+            throw new BuildException("processBoard board-username=${project.boardUsernameValue} cannot be null. Please specify a username using -PboardUsername=<username>")
+        }
+        if (project.boardPasswordValue == null) {
+            throw new BuildException("processBoard board-password=${project.boardPasswordValue} cannot be null. Please specify a password using -PboardPassword=<password>")
+        }
     }
     doLast {
         if (project.doProcessBoard) {
+            Map<String, Object> loginToken = getLoginToken(project.boardUriValue, project.boardUsername, project.boardPassword)
+            logger.info("Login token=${loginToken}")
+
+            List<Object> boardsList = listBoards(project.boardUriValue, loginToken)
+            logger.info("Boards list=${boardsList}")
+            boardsList.each { Object boardItem ->
+                Map<String, Object> boardMap = (Map<String, Object>) boardItem
+                String boardId = (String) boardMap.get("_id")
+                String boardTitle = (String) boardMap.get("title")
+
+                List<Object> boardLists = listBoardLists(project.boardUriValue, boardId, loginToken)
+                boardLists.each { Object singleList ->
+                    println("singleList=${singleList}, class=${singleList.getClass().getName()}")
+                }
+
+            }
         }
+
     }
+    timekeeper.logElapsed()
 }
